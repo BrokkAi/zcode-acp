@@ -1,9 +1,10 @@
 /**
  * Martty TUI launcher — the interactive CLI surface (ADR-0020).
  *
- * Bare `zcode-acp` spawns the bundled Martty terminal client (npm `martty`:
- * a Node wrapper selecting a per-platform Rust binary from its vendor/ dir)
- * with this package wired in as its ACP agent:
+ * Bare `zcode-acp` spawns the bundled Martty terminal client (npm
+ * `zcode-acp-martty`: this fork of upstream Martty, a Node wrapper selecting
+ * a per-platform Rust binary from its vendor/ dir) with this package wired in
+ * as its ACP agent:
  *
  *   martty --agent <node> --agent-arg <dist/index.js>
  *
@@ -30,7 +31,9 @@ export function resolveMarttyJs(): string | null {
   try {
     // "./bin/martty.js" is outside Martty's exports map, so resolve the
     // package.json (always exported) and walk into the package dir.
-    const pkgJson = createRequire(import.meta.url).resolve("martty/package.json");
+    const pkgJson = createRequire(import.meta.url).resolve(
+      "zcode-acp-martty/package.json",
+    );
     return path.join(path.dirname(pkgJson), "bin", "martty.js");
   } catch {
     return null;

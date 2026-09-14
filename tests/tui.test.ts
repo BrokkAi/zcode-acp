@@ -12,7 +12,9 @@ import { agentEntryJs, buildTuiArgs, resolveMarttyJs } from "../src/tui.js";
 
 describe("martty launcher", () => {
   it("resolves the bundled martty wrapper (regular dependency)", () => {
-    expect(resolveMarttyJs()).toMatch(/martty[/\\]bin[/\\]martty\.js$/);
+    expect(resolveMarttyJs()).toMatch(
+      /zcode-acp-martty[/\\]bin[/\\]martty\.js$/,
+    );
   });
 
   it("wires the bridge as the agent over the absolute node binary", () => {
