@@ -35,13 +35,23 @@ export const AGENT_INFO = {
   version: PACKAGE_VERSION,
 } as const;
 
-/** Path to the ZCode v2 config (credentials + provider/model metadata). */
-export const ZCODE_CREDS_PATH = path.join(
-  process.env.HOME || process.env.USERPROFILE || "~",
-  ".zcode",
-  "v2",
-  "config.json",
-);
+/**
+ * Root of the ZCode data directory. `ZCODE_HOME` replaces `~/.zcode` outright,
+ * so a bridge can run against an isolated ZCode install (a second account, a
+ * container mount, a test fixture) without touching the user's real one.
+ * Resolved at call time so a caller can change the env before reading.
+ */
+export function zcodeHomeDir(): string {
+  const explicit = process.env.ZCODE_HOME;
+  if (explicit) return explicit;
+  return path.join(process.env.HOME || process.env.USERPROFILE || "~", ".zcode");
+}
+
+/**
+ * Path to the ZCode v2 config (credentials + provider/model metadata).
+ * Module-level snapshot: `ZCODE_HOME` must be set before the process starts.
+ */
+export const ZCODE_CREDS_PATH = path.join(zcodeHomeDir(), "v2", "config.json");
 
 /**
  * Slash commands surfaced to the editor. Each maps to a ZCode session method
