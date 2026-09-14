@@ -26,6 +26,33 @@ describe("EventTranslator", () => {
     expect(out).toEqual([{ kind: "TextDelta", text: "hello" }]);
   });
 
+  it("carries assistantMessageId onto the emitted TextDelta", () => {
+    const t = new EventTranslator();
+    const out = t.translate(
+      ev("model.streaming", { kind: "text_delta", delta: "hello", assistantMessageId: "m1" }),
+    );
+    expect(out).toEqual([{ kind: "TextDelta", text: "hello", messageId: "m1" }]);
+  });
+
+  it("omits messageId when the streaming payload carries no assistantMessageId", () => {
+    const t = new EventTranslator();
+    const out = t.translate(ev("model.streaming", { kind: "text_delta", delta: "hello" }));
+    expect(out).toHaveLength(1);
+    expect(out[0]).not.toHaveProperty("messageId");
+  });
+
+  it("carries assistantMessageId onto the emitted ReasoningDelta", () => {
+    const t = new EventTranslator();
+    const out = t.translate(
+      ev("model.streaming", {
+        kind: "reasoning_delta",
+        delta: "thinking",
+        assistantMessageId: "m2",
+      }),
+    );
+    expect(out).toEqual([{ kind: "ReasoningDelta", text: "thinking", messageId: "m2" }]);
+  });
+
   it("emits a ReasoningDelta on reasoning_delta", () => {
     const t = new EventTranslator();
     const out = t.translate(ev("model.streaming", { kind: "reasoning_delta", delta: "thinking" }));

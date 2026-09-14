@@ -246,10 +246,24 @@ export class EventTranslator {
       else if (kind === "text_delta") this.deliveredMessageIds.add(msgId);
     }
 
+    // Carry the owning backend message id onto the emitted delta so the ACP
+    // chunk keeps one messageId per assistant message instead of one per turn.
+    const ownerId = typeof msgId === "string" && msgId ? msgId : undefined;
+
     if (kind === "text_delta") {
-      if (delta) results.push({ kind: "TextDelta", text: delta });
+      if (delta)
+        results.push({
+          kind: "TextDelta",
+          text: delta,
+          ...(ownerId ? { messageId: ownerId } : {}),
+        });
     } else if (kind === "reasoning_delta") {
-      if (delta) results.push({ kind: "ReasoningDelta", text: delta });
+      if (delta)
+        results.push({
+          kind: "ReasoningDelta",
+          text: delta,
+          ...(ownerId ? { messageId: ownerId } : {}),
+        });
     } else if (kind === "tool_call") {
       // Cache input + toolName for the later scheduled event.
       const callId = (payload["toolCallId"] as string) ?? "";
