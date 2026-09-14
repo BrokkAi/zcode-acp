@@ -11,6 +11,9 @@ export default [
       "node_modules/**",
       "coverage/**",
       ".zcode/**",
+      // Local codesearch/tgrep scratch (gitignored); its loose .mjs probes have
+      // no node globals configured and would otherwise fail `pnpm lint`.
+      "**/.tgrep/**",
       "*.config.js",
       "eslint.config.js",
     ],
