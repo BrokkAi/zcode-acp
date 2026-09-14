@@ -126,11 +126,19 @@ function discoverZcodeBin(): string | null {
  * no matter how often it retries, while curl/plain connects to the same host
  * succeed. Disabling it restores the pre-20.13 sequential connect, which
  * works. Set ZCODE_KEEP_HAPPY_EYEBALLS=1 to keep RFC 8305 behavior.
+ *
+ * Disabling it also removes the dual-stack fallback: `net.connect` then uses a
+ * single-address lookup, so a host that resolves `::1` first but only listens
+ * on IPv4 fails hard (ECONNREFUSED) instead of falling through — every local
+ * provider configured as `http://localhost:PORT` (IPv4-only listeners) dies.
+ * `--dns-result-order=ipv4first` restores the pre-17 lookup order so that
+ * single address is the IPv4 one; it only reorders, so an IPv6-only host still
+ * resolves to IPv6 and IPv4-only edges still connect directly.
  */
 function happyEyeballsArgs(): string[] {
   return process.env.ZCODE_KEEP_HAPPY_EYEBALLS
     ? []
-    : ["--no-network-family-autoselection"];
+    : ["--no-network-family-autoselection", "--dns-result-order=ipv4first"];
 }
 
 /** Resolve the full argv to launch `zcode app-server --stdio`. */
