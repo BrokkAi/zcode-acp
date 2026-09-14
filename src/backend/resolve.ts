@@ -141,12 +141,24 @@ function happyEyeballsArgs(): string[] {
     : ["--no-network-family-autoselection", "--dns-result-order=ipv4first"];
 }
 
+/**
+ * The backend subcommand and its flags, shared by every launch path.
+ *
+ * `ZCODE_DISALLOWED_TOOLS` is passed verbatim as the app-server's
+ * `--disallowed-tools` value; unset means the flag is absent, which is the
+ * backend's own default.
+ */
+export function backendArgs(): string[] {
+  const disallowed = process.env.ZCODE_DISALLOWED_TOOLS;
+  return ["app-server", "--stdio", ...(disallowed ? ["--disallowed-tools", disallowed] : [])];
+}
+
 /** Resolve the full argv to launch `zcode app-server --stdio`. */
 export function resolveZcodeCommand(): string[] {
   const zcodeBin = process.env.ZCODE_BIN ?? discoverZcodeBin() ?? "zcode";
   // Non-JS bin (e.g. a `zcode` command or wrapper) → use as-is, rely on its own shebang.
   if (!/\.(cjs|mjs|js)$/.test(zcodeBin)) {
-    return [zcodeBin, "app-server", "--stdio"];
+    return [zcodeBin, ...backendArgs()];
   }
   // JS file → launch with an explicit sqlite-capable Node to bypass the shebang.
   for (const nodeBin of candidateNodeBinaries()) {
@@ -162,18 +174,12 @@ export function resolveZcodeCommand(): string[] {
         // keep "?"
       }
       log(`resolve: launching zcode with node ${nodeBin} (${ver})`);
-      return [
-        nodeBin,
-        ...happyEyeballsArgs(),
-        zcodeBin,
-        "app-server",
-        "--stdio",
-      ];
+      return [nodeBin, ...happyEyeballsArgs(), zcodeBin, ...backendArgs()];
     }
   }
   log(
     "resolve: no sqlite-capable node found; falling back to PATH-resolved zcode shebang " +
       "(may fail under GUI launch)",
   );
-  return [zcodeBin, "app-server", "--stdio"];
+  return [zcodeBin, ...backendArgs()];
 }
