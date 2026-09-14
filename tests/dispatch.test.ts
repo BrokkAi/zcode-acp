@@ -277,6 +277,32 @@ describe("dispatchEvent", () => {
     });
   });
 
+  it("TextDeltas with different messageIds keep their own chunk ids", async () => {
+    const { cx, sent } = mockContext();
+    const server = makeServer(false);
+    await dispatchEvent(server, cx, SID, { kind: "TextDelta", text: "a", messageId: "m1" }, CHUNK);
+    await dispatchEvent(server, cx, SID, { kind: "TextDelta", text: "b", messageId: "m2" }, CHUNK);
+    expect(sent).toHaveLength(2);
+    expect(sent[0]).toMatchObject({ sessionUpdate: "agent_message_chunk", messageId: "m1" });
+    expect(sent[1]).toMatchObject({ sessionUpdate: "agent_message_chunk", messageId: "m2" });
+  });
+
+  it("ReasoningDelta with a messageId keeps the thought_ prefix", async () => {
+    const { cx, sent } = mockContext();
+    await dispatchEvent(
+      makeServer(false),
+      cx,
+      SID,
+      { kind: "ReasoningDelta", text: "why", messageId: "m1" },
+      CHUNK,
+    );
+    expect(sent[0]).toMatchObject({
+      sessionUpdate: "agent_thought_chunk",
+      content: { type: "text", text: "why" },
+      messageId: "thought_m1",
+    });
+  });
+
   it("PlanUpdate emits plan sessionUpdate with entries", async () => {
     const { cx, sent } = mockContext();
     await dispatchEvent(
