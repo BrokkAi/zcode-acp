@@ -324,13 +324,13 @@ permitted` (#127); the slave allow is extension-gated (`require-all` +
   call site (see `handlers/server-requests.ts`) when sending server→client
   requests; the SDK types also require the `toolCall` field on permission
   requests (Zed renders the popup against it).
-- **Releases are fully automated** (release-please + npm OIDC trusted
-  publishing, zero npm secrets): land conventional commits on `main`, merge
-  the `chore(main): release X.Y.Z` PR, and tag + GitHub Release + npm publish
-  happen by themselves. Never hand-bump `package.json` version. A publish
-  failure with 404 on PUT is an npm-side trusted-publisher mismatch, not the
-  workflow. Public doc: `docs/RELEASING.md`; setup + troubleshooting runbook:
-  `.zcode/docs/releasing-runbook.md` (gitignored).
+- **Releases in THIS fork are tag-driven, not release-please**: the
+  release-please config and workflow are deleted here, so `package.json` IS
+  hand-bumped and a `vX.Y.Z` tag on the tested commit drives
+  `.github/workflows/publish.yml`. Read `docs/RELEASES.md`, not
+  `docs/RELEASING.md` — the latter documents upstream's automation and is kept
+  only for parity when merging upstream. A publish failure with 404 on PUT is
+  an npm-side trusted-publisher mismatch, not the workflow.
 
 ## Docs to read before sensitive changes
 
@@ -352,3 +352,18 @@ Five canonical roles: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-fo
 ### Domain docs
 
 Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
+
+## Fork ownership and releases
+
+This is BrokkAi's downstream adapter for Mjolnir, published to npm as
+`@brokkai/zcode-acp`. Commit on `main` and push only to the BrokkAi remote.
+
+Send each fix upstream as well: develop it on a branch based on
+`upstream/main` and open a pull request against `william0wang/zcode-acp`.
+Upstream releases are merged into `main`, never rebased onto it.
+
+Releases use version tags and `.github/workflows/publish.yml`, after
+`pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm test`, and `pnpm smoke`
+pass locally. Update `package.json` and `pnpm-lock.yaml` together, commit the
+version, and tag that exact tested commit. Follow `docs/RELEASES.md`. There is
+no release-please automation and no preview channel in this fork.

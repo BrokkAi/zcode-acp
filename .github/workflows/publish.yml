@@ -1,0 +1,96 @@
+name: Publish BrokkAi adapter
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to retry
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: publish-adapter
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Verify package and tag
+        id: version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (p.name !== '@brokkai/zcode-acp' || process.env.RELEASE_TAG !== `v${p.version}`) throw new Error('Release tag must match the BrokkAi package version');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${p.version}\n`);
+          JS
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: npm pack
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-package
+          path: brokkai-zcode-acp-*.tgz
+          if-no-files-found: error
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v8
+        with:
+          name: npm-package
+      - name: Publish exact tested tarball
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          npm install --global npm@11
+          if npm view "@brokkai/zcode-acp@$VERSION" version; then
+            echo 'Version already published; continuing release recovery.'
+          else
+            # --ignore-scripts is safe here: the tarball is the artifact the
+            # verify job already built and tested, so prepublishOnly (build +
+            # test) has nothing left to do and postinstall must not run.
+            npm publish "brokkai-zcode-acp-$VERSION.tgz" --access public --provenance --ignore-scripts
+          fi
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG"; then
+            gh release create "$RELEASE_TAG" "brokkai-zcode-acp-$VERSION.tgz" --verify-tag --generate-notes
+          fi

@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.37.4 (BrokkAi fork) (2026-09-14)
+
+- Publish the adapter as `@brokkai/zcode-acp`. The `zcode-acp` and
+  `zcode-acp-server` executables are unchanged.
+- Carry the backend `assistantMessageId` onto streamed text and reasoning
+  chunks, so a turn with several assistant messages no longer collapses into
+  one message in ACP clients.
+- `ZCODE_HOME` replaces `~/.zcode` as the data root for the credentials config
+  and the lazy-session alias store.
+- `ZCODE_PROVIDER` pins the provider used for credentials and the model
+  dropdown; set with `ZCODE_MODEL` it pins new sessions to that exact model.
+- `ZCODE_ACP_MODE` sets the mode a new session starts in (default `yolo`).
+- `ZCODE_DISALLOWED_TOOLS` is passed to the app-server as `--disallowed-tools`.
+
 ## [0.37.3](https://github.com/william0wang/zcode-acp/compare/v0.37.2...v0.37.3) (2026-09-14)
 
 

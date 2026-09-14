@@ -1,5 +1,8 @@
 {
-  "name": "zcode-acp-server",
+  "name": "@brokkai/zcode-acp",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "0.37.3",
   "description": "Agent Client Protocol (ACP) server bridging headless ZCode to editors like Zed and JetBrains.",
   "type": "module",
@@ -7,11 +10,11 @@
   "author": "ZCode ACP Server Contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/william0wang/zcode-acp.git"
+    "url": "git+https://github.com/BrokkAi/zcode-acp.git"
   },
-  "homepage": "https://github.com/william0wang/zcode-acp#readme",
+  "homepage": "https://github.com/BrokkAi/zcode-acp#readme",
   "bugs": {
-    "url": "https://github.com/william0wang/zcode-acp/issues"
+    "url": "https://github.com/BrokkAi/zcode-acp/issues"
   },
   "keywords": [
     "acp",

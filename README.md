@@ -1,3 +1,5 @@
+> BrokkAi's downstream adapter for Mjolnir. Install `@brokkai/zcode-acp`; the executables remain `zcode-acp` and `zcode-acp-server`. Fixes are also sent upstream as pull requests to [william0wang/zcode-acp](https://github.com/william0wang/zcode-acp). Releases are maintained at https://github.com/BrokkAi/zcode-acp/releases.
+
 # zcode-acp-server
 
 [![CI](https://github.com/william0wang/zcode-acp/actions/workflows/ci.yml/badge.svg)](https://github.com/william0wang/zcode-acp/actions/workflows/ci.yml)
@@ -33,8 +35,16 @@ in place; see the project board for what's next.
 
 ## Install
 
+Run the published package directly:
+
 ```bash
-npm install -g zcode-acp-server
+npx -y @brokkai/zcode-acp
+```
+
+Or install it globally:
+
+```bash
+npm install -g @brokkai/zcode-acp
 ```
 
 This installs both bins: `zcode-acp-server` (what your editor launches) and

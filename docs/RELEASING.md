@@ -1,5 +1,10 @@
 # Releasing
 
+> This document describes UPSTREAM `william0wang/zcode-acp`'s release
+> automation. It is kept for parity when merging upstream and does not apply
+> to this fork. For BrokkAi releases of `@brokkai/zcode-acp`, read
+> [RELEASES.md](RELEASES.md).
+
 Releases are fully automated: [release-please](https://github.com/googleapis/release-please)
 turns Conventional Commits on `main` into a release PR, and merging that PR
 tags the release, creates the GitHub Release and publishes to npm — no manual
