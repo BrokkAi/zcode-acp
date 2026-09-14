@@ -687,7 +687,10 @@ export class ZcodeAcpServer {
       agentCapabilities: {
         loadSession: true,
         promptCapabilities: { image: true, audio: false, embeddedContext: false },
-        mcpCapabilities: { http: false, sse: false },
+        // http MCP configs are forwarded verbatim to the backend (session/
+        // create + resume), which mounts them fine — the declaration was the
+        // only blocker keeping clients from sending http servers (#180).
+        mcpCapabilities: { http: true, sse: false },
         sessionCapabilities: { list: {}, resume: {}, fork: {} },
         // Read-only session file access lives on the bridge's loopback /fs
         // endpoint, hub-proxied at /api/instances/{id}/fs/* (ADR-0004).
