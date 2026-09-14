@@ -22,6 +22,7 @@ const SAVED = {
   ZCODE_BIN: process.env.ZCODE_BIN,
   ZCODE_NODE: process.env.ZCODE_NODE,
   ZCODE_KEEP_HAPPY_EYEBALLS: process.env.ZCODE_KEEP_HAPPY_EYEBALLS,
+  ZCODE_DISALLOWED_TOOLS: process.env.ZCODE_DISALLOWED_TOOLS,
 };
 
 afterEach(() => {
@@ -34,6 +35,13 @@ afterEach(() => {
 function jsLaunchArgs(): string[] {
   process.env.ZCODE_BIN = "/nonexistent/zcode.cjs";
   process.env.ZCODE_NODE = process.execPath;
+  delete process.env.ZCODE_DISALLOWED_TOOLS;
+  return resolveZcodeCommand();
+}
+
+/** Non-JS ZCODE_BIN → the resolver returns the bin plus the backend args. */
+function nativeLaunchArgs(): string[] {
+  process.env.ZCODE_BIN = "/usr/bin/zcode";
   return resolveZcodeCommand();
 }
 
@@ -60,5 +68,32 @@ describe("resolveZcodeCommand Happy Eyeballs args", () => {
     const argv = jsLaunchArgs();
     expect(argv).not.toContain("--no-network-family-autoselection");
     expect(argv).not.toContain("--dns-result-order=ipv4first");
+  });
+});
+
+describe("resolveZcodeCommand disallowed tools", () => {
+  it("passes no --disallowed-tools when the env var is unset", () => {
+    delete process.env.ZCODE_DISALLOWED_TOOLS;
+    expect(nativeLaunchArgs()).toEqual(["/usr/bin/zcode", "app-server", "--stdio"]);
+  });
+
+  it("passes ZCODE_DISALLOWED_TOOLS through verbatim as one argument", () => {
+    process.env.ZCODE_DISALLOWED_TOOLS = "Bash,Write";
+    expect(nativeLaunchArgs()).toEqual([
+      "/usr/bin/zcode",
+      "app-server",
+      "--stdio",
+      "--disallowed-tools",
+      "Bash,Write",
+    ]);
+  });
+
+  it("appends the flag after the script path on the JS launch path too", () => {
+    process.env.ZCODE_BIN = "/nonexistent/zcode.cjs";
+    process.env.ZCODE_NODE = process.execPath;
+    process.env.ZCODE_DISALLOWED_TOOLS = "Bash Write";
+    const argv = resolveZcodeCommand();
+    expect(argv.slice(-4)).toEqual(["app-server", "--stdio", "--disallowed-tools", "Bash Write"]);
+    expect(argv.indexOf("/nonexistent/zcode.cjs")).toBeLessThan(argv.indexOf("app-server"));
   });
 });
