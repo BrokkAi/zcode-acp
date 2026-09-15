@@ -54,6 +54,19 @@ export function zcodeHomeDir(): string {
 export const ZCODE_CREDS_PATH = path.join(zcodeHomeDir(), "v2", "config.json");
 
 /**
+ * Path to the ZCode CLI config (skills/plugins/MCP enablement). Per call, so
+ * discovery follows a `ZCODE_HOME` change made after import (tests).
+ */
+export function zcodeCliConfigPath(): string {
+  return path.join(zcodeHomeDir(), "cli", "config.json");
+}
+
+/** Root of the ZCode plugin cache directory (per call — see above). */
+export function zcodePluginCacheDir(): string {
+  return path.join(zcodeHomeDir(), "cli", "plugins", "cache");
+}
+
+/**
  * Slash commands surfaced to the editor. Each maps to a ZCode session method
  * that the server forwards when the user types the command.
  *
