@@ -67,9 +67,10 @@ export interface TextDeltaEvent {
   kind: "TextDelta";
   text: string;
   /**
-   * Backend message id (assistantMessageId). Set by the projection-differ's
-   * turn-completion fallback replay so the turn loop can dedup against
-   * content already streamed via events this turn; absent on live stream deltas.
+   * Backend message id (assistantMessageId). Set on live stream deltas that
+   * carry one, and by the projection-differ's turn-completion fallback replay
+   * so the turn loop can dedup against content already streamed via events
+   * this turn; absent when the backend event carried no id.
    */
   messageId?: string;
 }

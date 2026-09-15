@@ -86,14 +86,14 @@ export async function dispatchEvent(
         await sendSessionUpdate(cx, sid, {
           sessionUpdate: "agent_message_chunk",
           content: { type: "text", text: ev.text },
-          messageId: chunkMsgId,
+          messageId: ev.messageId ?? chunkMsgId,
         });
         break;
       case "ReasoningDelta":
         await sendSessionUpdate(cx, sid, {
           sessionUpdate: "agent_thought_chunk",
           content: { type: "text", text: ev.text },
-          messageId: `thought_${chunkMsgId}`,
+          messageId: `thought_${ev.messageId ?? chunkMsgId}`,
         });
         break;
       case "PlanUpdate":
