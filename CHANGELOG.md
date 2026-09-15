@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dropdown; set with `ZCODE_MODEL` it pins new sessions to that exact model.
 - `ZCODE_ACP_MODE` sets the mode a new session starts in (default `yolo`).
 - `ZCODE_DISALLOWED_TOOLS` is passed to the app-server as `--disallowed-tools`.
+## [0.38.0](https://github.com/william0wang/zcode-acp/compare/v0.37.3...v0.38.0) (2026-09-15)
+
+
+### Features
+
+* pass ZCODE_DISALLOWED_TOOLS to the app-server as --disallowed-tools ([#190](https://github.com/william0wang/zcode-acp/issues/190)) ([85ecb4f](https://github.com/william0wang/zcode-acp/commit/85ecb4fa6bf6daecd77efe4bb068864ce6f217e9))
+
+
+### Bug Fixes
+
+* carry the backend assistantMessageId onto streamed text and reasoning chunks ([#186](https://github.com/william0wang/zcode-acp/issues/186)) ([d346fcf](https://github.com/william0wang/zcode-acp/commit/d346fcf25a6afdc3e489124c5d80f1b1dded633a))
 
 ## [0.37.3](https://github.com/william0wang/zcode-acp/compare/v0.37.2...v0.37.3) (2026-09-14)
 
