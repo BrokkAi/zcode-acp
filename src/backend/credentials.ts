@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import process from "node:process";
 
 import { DEFAULT_MODEL_ID } from "../config/options.js";
-import { log, ZCODE_CREDS_PATH } from "../utils.js";
+import { log, warn, ZCODE_CREDS_PATH } from "../utils.js";
 
 /** Parsed provider entry in config.json. */
 interface ProviderConfig {
@@ -49,6 +49,17 @@ export function loadZcodeCredentials(): ZcodeCredentials {
           ANTHROPIC_API_KEY: opts.apiKey ?? "",
         };
       }
+    }
+    // A pinned id that matched nothing is a misconfiguration the operator
+    // can fix — say so instead of surfacing later as a far-away backend auth
+    // failure with the provider stripped of its credentials.
+    if (pinned) {
+      const known = Object.keys(cfg.provider ?? {});
+      const knownState = known.includes(pinned) ? "is disabled" : "matches no provider";
+      warn(
+        `credentials: ZCODE_PROVIDER '${pinned}' ${knownState} in ${ZCODE_CREDS_PATH} ` +
+          `(known: ${known.join(", ") || "none"}) — no credentials loaded`,
+      );
     }
   } catch (e) {
     log(

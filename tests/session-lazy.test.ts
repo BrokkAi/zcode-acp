@@ -20,6 +20,7 @@ import {
   resumeSession,
 } from "../src/handlers/session.js";
 import { ZcodeAcpServer } from "../src/server.js";
+import { ZCODE_CREDS_PATH } from "../src/utils.js";
 
 // Record tasks-index upserts so tests can assert the App sync happens at
 // materialization (never at session/new). The real module writes the App's
@@ -51,20 +52,41 @@ vi.mock("../src/lazy-sessions.js", () => ({
   lookupLazySession: (acpSid: string) => mockStore.get(acpSid),
 }));
 
+// Injectable config.json content (served at ZCODE_CREDS_PATH) so the
+// provider/model pin tests can define a provider without touching disk.
+// Default `{}` ≈ the hermetic home's missing config — existing tests are
+// unaffected.
+let fakeCreds: unknown = {};
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+  return {
+    ...actual,
+    readFileSync: ((p: string, ...rest: unknown[]) => {
+      if (p === ZCODE_CREDS_PATH) return JSON.stringify(fakeCreds);
+      return actual.readFileSync(p, ...(rest as [unknown]));
+    }) as typeof actual.readFileSync,
+  };
+});
+
 beforeEach(() => {
   mockStore.clear();
+  mockUpsertCalls.length = 0;
+  fakeCreds = {};
 });
 
 /**
  * Fake backend: answers session/create (counting creates), session/resume,
  * session/read (empty projection/settings), session/messages (from `messages`,
  * empty by default), the provider-registry push, and session/list (from
- * `listed`, for title adoption); errors on everything else.
+ * `listed`, for title adoption); errors on everything else — including
+ * session/setModel unless `setModelOk` is set (for provider-pin tests).
+ * One-way `send`s are recorded in `calls` like requests.
  */
 function fakeBackend(
   listed: Array<{ sessionId: string; title?: string }> = [],
   messages: ZcodeMessage[] = [],
   resumeWorkspace?: string,
+  opts: { setModelOk?: boolean } = {},
 ): ZcodeBackend & {
   calls: Array<{ method: string; params: unknown }>;
 } {
@@ -83,6 +105,9 @@ function fakeBackend(
               session: { sessionId: `sess_lazy_${created}`, title: "", traceId: "trace_1" },
             },
           };
+        case "session/setModel":
+          if (opts.setModelOk) return { id, result: {} };
+          return { id, error: { message: "model not available" } };
         case "session/resume":
           return {
             id,
@@ -103,6 +128,9 @@ function fakeBackend(
         default:
           return { id, error: { message: `unhandled ${method}` } };
       }
+    },
+    send: (method: string, params: unknown) => {
+      calls.push({ method, params });
     },
     registerEventListener: () => {},
     unregisterEventListener: () => {},
@@ -664,5 +692,104 @@ describe("serve mode cwd pinning (ADR-0014 hardening)", () => {
       workspace: { workspacePath: process.cwd() },
     });
     expect(server.sessionCwds.get("sess_real_2")).toBeUndefined();
+  });
+});
+
+describe("ensureRealSession provider/model pin (ZCODE_PROVIDER + ZCODE_MODEL)", () => {
+  function pinnedCreds(): void {
+    fakeCreds = {
+      provider: {
+        "builtin:pin": {
+          name: "Pin",
+          kind: "anthropic",
+          enabled: true,
+          options: { apiKey: "pin-key", baseURL: "https://pin.example/api" },
+          models: { "GLM-pinned": { limit: { context: 200000 } } },
+        },
+      },
+    };
+  }
+
+  it("a refused pin leaves no resolvable alias — the retry fails again, never runs unpinned", async () => {
+    // Regression (review): the pin used to run AFTER registerSession, so a
+    // refused pair still mapped acpSid → sid; the next prompt resolved the
+    // sid and ran its turn on whatever model the backend had picked.
+    const server = new ZcodeAcpServer();
+    const resp = await newSession(server, newSessionParams("/tmp/ws"));
+    const { backend, calls } = fakeBackend();
+    server.backend = backend;
+    pinnedCreds();
+
+    vi.stubEnv("ZCODE_PROVIDER", "builtin:pin");
+    vi.stubEnv("ZCODE_MODEL", "GLM-pinned");
+    try {
+      await expect(ensureRealSession(server, resp.sessionId)).rejects.toThrow(
+        "zcode refused configured model builtin:pin\\GLM-pinned",
+      );
+      // No mapping: a later prompt must not silently run on the backend's
+      // own model pick.
+      expect(server.resolveSid(resp.sessionId)).toBeUndefined();
+      // The pending entry survives so the next use retries the create.
+      expect(server.pendingSessions.has(resp.sessionId)).toBe(true);
+      // The orphaned backend session is closed best-effort.
+      const closes = calls.filter((c) => c.method === "session/close");
+      expect(closes).toHaveLength(1);
+      expect(closes[0]!.params).toEqual({ sessionId: "sess_lazy_1" });
+
+      // The retry hits the same wall — a fresh create, another refusal.
+      await expect(ensureRealSession(server, resp.sessionId)).rejects.toThrow(
+        "zcode refused configured model",
+      );
+      expect(server.resolveSid(resp.sessionId)).toBeUndefined();
+      expect(calls.filter((c) => c.method === "session/create")).toHaveLength(2);
+      expect(calls.filter((c) => c.method === "session/close")).toHaveLength(2);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("a successful pin registers the alias and records the durable session", async () => {
+    const server = new ZcodeAcpServer();
+    const resp = await newSession(server, newSessionParams("/tmp/ws"));
+    const { backend, calls } = fakeBackend([], [], undefined, { setModelOk: true });
+    server.backend = backend;
+    pinnedCreds();
+
+    vi.stubEnv("ZCODE_PROVIDER", "builtin:pin");
+    vi.stubEnv("ZCODE_MODEL", "GLM-pinned");
+    try {
+      const sid = await ensureRealSession(server, resp.sessionId);
+      expect(sid).toBe("sess_lazy_1");
+      expect(server.resolveSid(resp.sessionId)).toBe(sid);
+      expect(server.pendingSessions.has(resp.sessionId)).toBe(false);
+      // The durable alias is recorded (bridge-restart recovery) and the App
+      // sync happens exactly once.
+      expect(mockStore.get(resp.sessionId)).toMatchObject({ zcodeSid: sid, cwd: "/tmp/ws" });
+      expect(mockUpsertCalls).toHaveLength(1);
+      const switches = calls.filter((c) => c.method === "session/setModel");
+      expect(switches).toHaveLength(1);
+      expect(switches[0]!.params).toMatchObject({
+        sessionId: sid,
+        model: { providerId: "builtin:pin", modelId: "GLM-pinned" },
+      });
+      expect(calls.filter((c) => c.method === "session/close")).toHaveLength(0);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("no pin RPC is sent when only one of the two variables is set", async () => {
+    const server = new ZcodeAcpServer();
+    const resp = await newSession(server, newSessionParams("/tmp/ws"));
+    const { backend, calls } = fakeBackend([], [], undefined, { setModelOk: true });
+    server.backend = backend;
+
+    vi.stubEnv("ZCODE_MODEL", "GLM-pinned");
+    try {
+      await expect(ensureRealSession(server, resp.sessionId)).resolves.toBe("sess_lazy_1");
+      expect(calls.filter((c) => c.method === "session/setModel")).toHaveLength(0);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

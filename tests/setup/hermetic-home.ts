@@ -17,6 +17,12 @@
  * reading them would treat the test worker as that TUI's bridge — signalling
  * the REAL window's process tree (observed live 2026-09-08: the run killed
  * its own host window). Tests that need them re-stub explicitly.
+ *
+ * ZCODE_PROVIDER / ZCODE_MODEL are deleted for the same reason: a vitest run
+ * started from inside a bridge (editor extension host, incubated TUI) inherits
+ * the operator's pin, and every lazy-materialization test would then demand a
+ * session/setModel the fake backends refuse. The knobs are opt-in per process;
+ * the suite must not inherit the host's.
  */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -28,6 +34,8 @@ const home = mkdtempSync(path.join(tmpdir(), "zacp-test-home-"));
 process.env.HOME = home;
 delete process.env.ZCODE_ACP_REMOTE_ORIGIN;
 delete process.env.ZCODE_ACP_TUI_CLI_PID;
+delete process.env.ZCODE_PROVIDER;
+delete process.env.ZCODE_MODEL;
 
 afterAll(() => {
   // The dir is only used synchronously by store/config reads; by afterAll the

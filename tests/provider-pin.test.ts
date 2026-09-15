@@ -74,6 +74,49 @@ describe("loadZcodeCredentials provider pinning", () => {
 
     expect(loadZcodeCredentials()).toEqual({});
   });
+
+  it("warns naming ZCODE_PROVIDER when the pin matches nothing", () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      vi.stubEnv("ZCODE_PROVIDER", "builtin:missing");
+      expect(loadZcodeCredentials()).toEqual({});
+      expect(stderr).toHaveBeenCalledTimes(1);
+      expect(String(stderr.mock.calls[0]?.[0])).toContain(
+        "ZCODE_PROVIDER 'builtin:missing' matches no provider",
+      );
+
+      // A known-but-disabled id is called out as disabled, not missing.
+      stderr.mockClear();
+      fakeConfig = {
+        provider: {
+          "builtin:off": {
+            ...plan("Off", "https://off.example/api", "off-key", "GLM-off"),
+            enabled: false,
+          },
+        },
+      };
+      vi.stubEnv("ZCODE_PROVIDER", "builtin:off");
+      expect(loadZcodeCredentials()).toEqual({});
+      expect(stderr).toHaveBeenCalledTimes(1);
+      expect(String(stderr.mock.calls[0]?.[0])).toContain(
+        "ZCODE_PROVIDER 'builtin:off' is disabled",
+      );
+    } finally {
+      stderr.mockRestore();
+    }
+  });
+
+  it("stays quiet when the pin matches, or when no pin is set", () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(loadZcodeCredentials().ANTHROPIC_API_KEY).toBe("first-key");
+      vi.stubEnv("ZCODE_PROVIDER", "builtin:second");
+      expect(loadZcodeCredentials().ANTHROPIC_API_KEY).toBe("second-key");
+      expect(stderr).not.toHaveBeenCalled();
+    } finally {
+      stderr.mockRestore();
+    }
+  });
 });
 
 describe("loadAllModels provider pinning", () => {
