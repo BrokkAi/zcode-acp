@@ -11,6 +11,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import process from "node:process";
 import type * as acp from "@agentclientprotocol/sdk";
 
 import type { ZcodeReadResult } from "../backend/types.js";
@@ -227,14 +228,23 @@ export function parseModelValue(value: string): { providerId: string; modelId: s
   return { providerId: value.slice(0, idx), modelId: value.slice(idx + 1) };
 }
 
+/**
+ * The mode a NEW session is created in: `ZCODE_ACP_MODE`, or "yolo". The
+ * single source for both the create call and the pending-session reads —
+ * `session/new` must not advertise a mode the create won't use.
+ */
+export function initialSessionMode(): string {
+  return process.env.ZCODE_ACP_MODE || "yolo";
+}
+
 /** Build the ACP SessionModeState ({currentModeId, availableModes}).
  *  zcodeSid null = pending session (session/new not yet materialized) — skip
- *  the backend read and return defaults. */
+ *  the backend read and return the create-time mode as current. */
 export async function buildModes(
   server: ZcodeAcpServer,
   zcodeSid: string | null,
 ): Promise<acp.SessionModeState> {
-  let currentMode = "yolo";
+  let currentMode = zcodeSid === null ? initialSessionMode() : "yolo";
   if (zcodeSid !== null) {
     try {
       const read = await sessionRead(server, zcodeSid);
@@ -294,7 +304,7 @@ export async function buildConfigOptions(
 ): Promise<acp.SessionConfigOption[]> {
   let currentProviderId = "";
   let currentModelId = DEFAULT_MODEL_ID;
-  let currentMode = zcodeSid === null ? "yolo" : "build";
+  let currentMode = zcodeSid === null ? initialSessionMode() : "build";
   // Matches the enabled provider's default reasoning variants (GLM-5.3:
   // max/high/low, default max). Pending sessions show this until the real
   // session/read thoughtLevel arrives.
