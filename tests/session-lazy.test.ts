@@ -175,6 +175,12 @@ describe("ensureRealSession", () => {
     vi.stubEnv("ZCODE_ACP_MODE", "build");
     const server = new ZcodeAcpServer();
     const resp = await newSession(server, newSessionParams("/tmp/ws"));
+    // The session/new response must advertise the create-time mode — a
+    // hardcoded "yolo" stood here until the first materialized mode read
+    // (review finding).
+    expect(resp.modes.currentModeId).toBe("build");
+    const modeOpt = resp.configOptions.find((o) => o.id === "mode");
+    expect(modeOpt?.currentValue).toBe("build");
     const { backend, calls } = fakeBackend();
     server.backend = backend;
 

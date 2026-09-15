@@ -34,6 +34,7 @@ import {
   DEFAULT_MODEL_ID,
   DEFAULT_PROVIDER_ID,
   formatModelValue,
+  initialSessionMode,
   loadAllModels,
   modelContextWindow,
   parseModelValue,
@@ -519,7 +520,7 @@ export async function ensureRealSession(server: ZcodeAcpServer, acpSid: string):
       workspace: workspaceFor(pending.cwd),
       // ZCODE_ACP_MODE picks the mode a new session starts in; the default
       // stays "yolo" (unrestricted), which is what the bridge always used.
-      mode: process.env.ZCODE_ACP_MODE || "yolo",
+      mode: initialSessionMode(),
     };
     if (pending.mcpServers && pending.mcpServers.length > 0) {
       createParams.mcpServers = pending.mcpServers;
