@@ -534,19 +534,24 @@ export async function ensureRealSession(server: ZcodeAcpServer, acpSid: string):
     const sid = session.sessionId;
     if (!sid) throw new Error("zcode create returned no sessionId");
 
-    server.pendingSessions.delete(acpSid);
-    server.registerSession(acpSid, sid);
     // With both ZCODE_PROVIDER and ZCODE_MODEL set, the session is pinned to
-    // that pair right after create. Fail loudly: a silent fallback would run
-    // the turn on whatever model the backend picked instead.
+    // that pair right after create. This MUST happen before the alias is
+    // registered: a refused pair that had already mapped acpSid → sid would
+    // let the NEXT prompt resolve the sid and run its turn on whatever model
+    // the backend picked — the exact silent fallback this pin exists to
+    // prevent. On failure the pending entry survives (the next use retries
+    // the create) and the orphaned backend session is closed best-effort.
     const pinnedProvider = process.env.ZCODE_PROVIDER;
     const pinnedModel = process.env.ZCODE_MODEL;
     if (pinnedProvider && pinnedModel) {
       const selected = formatModelValue(pinnedProvider, pinnedModel);
       if (!(await applyModelSwitch(server, sid, selected))) {
+        backend.send("session/close", { sessionId: sid });
         throw new Error(`zcode refused configured model ${selected}`);
       }
     }
+    server.pendingSessions.delete(acpSid);
+    server.registerSession(acpSid, sid);
     // session/create loads the session into this backend process.
     server.markBackendLoaded(acpSid);
     // Keep the durable alias in sync so a later bridge restart can still
